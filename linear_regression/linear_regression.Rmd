@@ -1,0 +1,704 @@
+---
+title: "Modelos Lineares Generalizados - Introdução a Regresssão Linear"
+short-title: "Regressão Linear"
+author: "Antonio C. da Silva Júnior"
+email: "juniorssz@gmail.com"
+short-author: "Silva Júnior, A. C."
+date: "05 de dezembro de 2020"
+short-date: "05/12/2020"
+output: 
+  bookdown::beamer_presentation2:
+    template: beamer_template.tex
+    keep_tex: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, fig.align="center")
+```
+
+```{r}
+# Pacotes:
+library(tidyverse)
+library(kableExtra)
+theme_set(theme_minimal())
+```
+
+```{r}
+# Carregando os dados:
+df_tempo <- read.csv("../data/tempo.csv")
+```
+
+```{r}
+# Funções úteis:
+
+plot_estudantes <- function(only_line=FALSE, y_est=NULL, dist=TRUE, coefs=FALSE, preds=FALSE) {
+  plt <- df_tempo %>%
+    ggplot(aes(x = Distancia))
+  
+  if(!only_line) {
+    plt <- plt +
+      geom_point(aes(y = Tempo), size = 5, color = "blue", alpha = 0.7) 
+  }
+  
+  if(!is.null(y_est)) {
+    plt <- plt + 
+      geom_line(aes_string(y = y_est), size = 1, color = "red")
+  }
+  
+  if(dist & !is.null(y_est)) {
+    plt <- plt + 
+      geom_segment(aes_string(x = "Distancia", xend = "Distancia", y = y_est, yend = "Tempo"), linetype = 2)
+  }
+  
+  if(coefs) {
+    plt <- plt +
+      geom_segment(aes(x = 20, xend = 25, y = 34.25676, yend = 34.25676), linetype = 2) +
+      geom_segment(aes(x = 25, y = 34.25676, xend = 25, yend = 41.35135), color = "blue", size = 1) +
+      geom_segment(aes(x = 5, y = 12.97297, xend = 0, yend = 5.8784), linetype = 2) +
+      geom_segment(aes(x = 0, y = 0, xend = 0, yend = 5.8784), color = "blue", size = 1) +
+      geom_text(x = 0.8, y = 4, label = expression(beta[0]), size = 6, color = "blue") +
+      geom_text(x = 25.8, y = 38.8, label = expression(beta[1]), size = 6, color = "blue")
+  }
+  
+  if(preds) {
+    plt <- plt + 
+      geom_segment(aes(x = 25, xend = 25, y = -4.5, yend = 41.35135	), linetype = 2) +
+      geom_segment(aes(x = 25, xend = -1.5, y = 41.35135	, yend = 41.35135	), linetype = 2)
+  }
+  
+  plt <- plt + 
+    labs(title = "Tempo de percurso x Distância percorrida", x = "Distância (km)", y = "Tempo (min)") +
+    coord_cartesian(xlim = c(0, 35), ylim = c(0, 80)) +
+    scale_x_discrete(limits = seq(0, 35, 5)) +
+    scale_y_discrete(limits = seq(0, 80, 10))
+  
+  plt <- plt +
+    theme(
+      plot.title = element_text(size = 18),
+      axis.title = element_text(size = 14),
+      axis.text = element_text(size = 12)
+    )
+  
+  plot(plt)
+  
+}
+
+
+
+reta <- function(x, b0, b1) {
+  y <- b1*x + b0
+  return(y)
+}
+
+```
+
+
+# Conceitos gerais
+
+## Exemplo
+
+Estudar o comportamento do "tempo de percurso até a escola" em função da "distância percorrida pelos alunos".
+
+\begin{center}
+```{r}
+df_tempo %>%
+  kable(col.names = c("Tempo (min)", "Distância (km)"))
+```
+\end{center}
+
+
+
+## Exemplo
+
+```{r,  out.width='90%'}
+plot_estudantes()
+```
+
+## Exemplo
+
+```{r,  out.width='90%'}
+model <- lm(Tempo ~ Distancia, df_tempo)
+df_tempo$Tempo_ajust <- predict(model)
+
+plot_estudantes(y_est = "Tempo_ajust", dist = F)
+```
+
+
+## Regressão Linear Simples
+
+* Equação do modelo:
+
+
+\begin{equation}
+y = \beta_0 + \beta_1x + \epsilon \text{,}
+\end{equation}
+
+em que $\beta_0$ é o intercepto (coeficiente linear), $\beta_1$ é a inclinação da reta (coeficiente angular) e $\epsilon$, o termo de erro aleatório.
+
+
+## Parâmetros
+
+```{r,  out.width='90%'}
+plot_estudantes(only_line = T, y_est = "Tempo_ajust", dist = F, coefs = T)
+```
+
+
+## Estimativas
+
+* Modelo ajustado:
+
+
+\begin{equation}
+\hat{y} = \hat{\beta}_0 + \hat{\beta}_1x \text{,}
+\end{equation}
+
+com $\hat{\beta}_0$ = 5.8784 e $\hat{\beta}_1$ = 1.4189.
+
+
+
+## Estimativas
+
+Portanto, um aluno que percorre uma distância de 25km, leva em média 41,3 minutos para chegar na escola. \vspace{0.5cm}
+
+\begin{center}
+$\hat{y} = \hat{\beta}_0 + \hat{\beta}_1 \times 25$
+
+$41.3509 = 5.8784 + 1.4189 \times 25$
+\end{center}
+
+
+
+## Interpretação
+
+A cada $k$ unidades a mais de distância percorrida, o tempo de um aluno chegar na escola aumenta, em média, $k\hat{\beta}_1$ unidades de tempo.
+
+Dentro do contexto, 10km a mais de distância percorrida aumenta, em média, 14,19 minutos ($10 \times 1,4189$) o tempo do trajeto.
+
+
+
+## Interpretação
+
+E caso a distância percorrida seja 0, o tempo para chegar na escola será de 5,8784 ($\hat{\beta_0}$) minutos.
+
+Matematicamente a afirmação faz sentido, entretanto, ao observar que nos dados de ajuste do modelo não havia nenhum aluno com distância percorrida próxima de 0, concluimos que o intercepto indica, na verdade, uma extrapolação da reta de regressão.
+
+
+
+# Ajuste do modelo
+
+## Estimação dos parâmetros 
+
+\begin{columns}
+
+\begin{column}{0.75\textwidth}
+
+```{r}
+df_tempo$y0 <- with(df_tempo, mapply(reta, Distancia, 30, 0))
+plot_estudantes(y_est = "y0")
+```
+
+\end{column}
+
+\begin{column}{0.25\textwidth}
+
+```{r}
+df_tempo$QR0 <- with(df_tempo, (Tempo - y0)^2)
+df_SQRes <- data.frame(Reta = 0,
+                     SQRes = c(sum(df_tempo$QR0)))
+df_SQRes %>%
+  kable()
+```
+
+\end{column}
+
+\end{columns}
+
+
+
+## Estimação dos parâmetros
+
+\begin{columns}
+
+\begin{column}{0.75\textwidth}
+
+```{r}
+df_tempo$y1 <- with(df_tempo, mapply(reta, Distancia, 21.7, 0.5))
+plot_estudantes(y_est = "y1")
+```
+
+\end{column}
+
+\begin{column}{0.25\textwidth}
+
+```{r}
+df_tempo$QR1 <- with(df_tempo, (Tempo - y1)^2)
+df_y1 <- data.frame(Reta = 1,
+                     SQRes = c(sum(df_tempo$QR1)))
+df_SQRes <- rbind(df_SQRes, df_y1)
+df_SQRes %>%
+  kable()
+```
+
+\end{column}
+
+\end{columns}
+
+
+
+
+## Estimação dos parâmetros
+
+\begin{columns}
+
+\begin{column}{0.75\textwidth}
+
+```{r}
+df_tempo$y2 <- with(df_tempo, mapply(reta, Distancia, 13.3, 1))
+plot_estudantes(y_est = "y2")
+```
+
+\end{column}
+
+\begin{column}{0.25\textwidth}
+
+```{r}
+df_tempo$QR2 <- with(df_tempo, (Tempo - y2)^2)
+df_y2 <- data.frame(Reta = 2,
+                     SQRes = c(sum(df_tempo$QR2)))
+df_SQRes <- rbind(df_SQRes, df_y2)
+df_SQRes %>%
+  kable()
+```
+
+\end{column}
+
+\end{columns}
+
+
+
+## Estimação dos parâmetros
+
+\begin{columns}
+
+\begin{column}{0.75\textwidth}
+
+```{r}
+df_tempo$y3 <- with(df_tempo, mapply(reta, Distancia, 5, 1.5))
+plot_estudantes(y_est = "y3")
+```
+
+\end{column}
+
+\begin{column}{0.25\textwidth}
+
+```{r}
+df_tempo$QR3 <- with(df_tempo, (Tempo - y3)^2)
+df_y3 <- data.frame(Reta = 3,
+                     SQRes = c(sum(df_tempo$QR3)))
+df_SQRes <- rbind(df_SQRes, df_y3)
+df_SQRes %>%
+  kable()
+```
+
+\end{column}
+
+\end{columns}
+
+
+
+## Estimação dos parâmetros
+
+\begin{columns}
+
+\begin{column}{0.75\textwidth}
+
+```{r}
+df_tempo$y4 <- with(df_tempo, mapply(reta, Distancia,  -1, 2))
+plot_estudantes(y_est = "y4")
+```
+
+\end{column}
+
+\begin{column}{0.25\textwidth}
+
+```{r}
+df_tempo$QR4 <- with(df_tempo, (Tempo - y4)^2)
+df_y4 <- data.frame(Reta = 4,
+                     SQRes = c(sum(df_tempo$QR4)))
+df_SQRes <- rbind(df_SQRes, df_y4)
+df_SQRes %>%
+  kable()
+```
+
+\end{column}
+
+\end{columns}
+
+
+
+
+## Estimação dos parâmetros
+
+\begin{columns}
+
+\begin{column}{0.75\textwidth}
+
+```{r}
+df_tempo$y5 <- with(df_tempo, mapply(reta, Distancia, -2, 2.2))
+plot_estudantes(y_est = "y5")
+```
+
+\end{column}
+
+\begin{column}{0.25\textwidth}
+
+```{r}
+df_tempo$QR5 <- with(df_tempo, (Tempo - y5)^2)
+df_y5 <- data.frame(Reta = 5,
+                     SQRes = c(sum(df_tempo$QR5)))
+df_SQRes <- rbind(df_SQRes, df_y5)
+df_SQRes %>%
+  kable()
+```
+
+\end{column}
+
+\end{columns}
+
+
+
+
+## Estimação dos parâmetros
+
+\begin{columns}
+
+\begin{column}{0.75\textwidth}
+
+```{r}
+df_tempo$y6 <- with(df_tempo, mapply(reta, Distancia, -3, 2.4))
+plot_estudantes(y_est = "y6")
+```
+
+\end{column}
+
+\begin{column}{0.25\textwidth}
+
+```{r}
+df_tempo$QR6 <- with(df_tempo, (Tempo - y6)^2)
+df_y6 <- data.frame(Reta = 6,
+                     SQRes = c(sum(df_tempo$QR6)))
+df_SQRes <- rbind(df_SQRes, df_y6)
+df_SQRes %>%
+  kable()
+```
+
+\end{column}
+
+\end{columns}
+
+
+
+## Estimação dos parâmetros
+
+```{r,  out.width='90%'}
+plot_sqres <- function(slope = FALSE) {
+  plt <- df_SQRes %>%
+    ggplot(aes(x = Reta, y = SQRes)) +
+    geom_point(size = 6, color = "red", alpha = 0.8) +
+    scale_x_discrete(limits = 0:6) +
+    labs(title = "Somas dos quadrados dos resíduos x reta de regressão", x = "Reta", "SQRes")
+  
+  if(slope) {
+    plt <- plt +
+      geom_segment(aes(x = 2, xend = 4, y = 335, yend = 335), linetype = 2)
+  }
+  
+  plt <- plt +
+    theme(
+      plot.title = element_text(size = 18),
+      axis.title = element_text(size = 14),
+      axis.text = element_text(size = 12)
+    )
+  
+  plot(plt)
+}
+
+plot_sqres()
+```
+
+
+
+## Estimação dos parâmetros
+
+* Resíduo: \vspace{0.5cm}
+
+\begin{center}
+$r_i = y_i - \hat{y}_i$, \vspace{0.5cm}
+
+$r_i = y_i - (\hat{\beta}_0 + \hat{\beta}_1x_i)$, \vspace{0.5cm}
+
+$r_i = y_i - \hat{\beta}_0 - \hat{\beta}_1x_i$.
+\end{center}
+
+
+
+## Estimação dos parâmetros
+
+* Quadrado do resíduo: \vspace{0.5cm}
+
+\begin{center}
+$r_i^2 = (y_i - \hat{\beta}_0 - \hat{\beta}_1x_i)^2$.
+\end{center} \vspace{0.5cm}
+
+* Soma dos quadrados dos resíduos: \vspace{0.5cm}
+
+\begin{equation}
+S = \sum \limits_{i=1}^n (y_i - \hat{\beta}_0 - \hat{\beta}_1x_i)^2 \text{.}
+\end{equation}
+
+
+
+## Estimação dos parâmetros
+
+
+\begin{center}
+```{r}
+df_tempo$Res <- with(df_tempo, Tempo - Tempo_ajust)
+df_tempo$QRes <- df_tempo$Res^2
+df_tempo[c("Tempo", "Tempo_ajust", "Res", "QRes")] %>%
+  kable(col.names = c("y (obs)", "y (ajust)", "Res", "QRes"))
+
+```
+\end{center}
+
+
+
+
+## Estimação dos parâmetros
+
+Como estimar $\beta_0$ e $\beta_1$ de modo que a soma dos quadrados dos resíduos seja mínima?
+
+
+
+## Estimação dos parâmetros
+
+```{r,  out.width='90%'}
+plot_sqres(slope = TRUE)
+```
+
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+* Derivada parcial em relação a $\hat{\beta}_0$: \vspace{0.5cm}
+
+\begin{center}
+$\dfrac{\partial S}{\partial \beta_0} = \dfrac{\partial}{\partial \beta_0} \sum \limits_{i=1}^n (y_i - \hat{\beta}_0 - \hat{\beta}_1x_i)^2$, \vspace{0.5cm}
+
+$u = y_i - \hat{\beta}_0 - \hat{\beta}_1x_i$,
+\end{center}
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+* Derivada parcial em relação a $\hat{\beta}_0$: \vspace{0.5cm}
+
+\begin{center}
+$\dfrac{\partial S}{\partial \beta_0} = \dfrac{\partial}{\partial \beta_0} \sum \limits_{i=1}^n (u)^2$, \vspace{0.5cm}
+
+$\dfrac{\partial S}{\partial \beta_0} = \sum \limits_{i=1}^n 2uu'$, \vspace{0.5cm}
+
+$u' = -1$,
+\end{center}
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+* Derivada parcial em relação a $\hat{\beta}_0$: \vspace{0.5cm}
+
+\begin{center}
+$\dfrac{\partial S}{\partial \beta_0} = \sum \limits_{i=1}^n 2(y_i - \hat{\beta}_0 - \hat{\beta}_1x_i)(-1)$,
+\end{center} \vspace{0.5cm}
+
+\begin{equation}
+\dfrac{\partial S}{\partial \beta_0} = -2\sum \limits_{i=1}^n (y_i - \hat{\beta}_0 - \hat{\beta}_1x_i) \text{.}
+\end{equation}
+
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+* Iguala a zero: \vspace{0.5cm}
+
+\begin{center}
+$\dfrac{\partial S}{\partial \beta_0} = 0$, \vspace{0.5cm}
+
+$-2 \sum \limits_{i=1}^n (y_i - \hat{\beta}_0 - \hat{\beta}_1x_i) = 0$, \vspace{0.5cm}
+
+$-2 \sum \limits_{i=1}^n y_i + 2 \sum \limits_{i=1}^n \hat{\beta}_0 + 2 \sum \limits_{i=1}^n \hat{\beta}_1x_i = 0$,
+\end{center}
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+* Iguala a zero: \vspace{0.5cm}
+
+\begin{center}
+$\dfrac{-2 \sum \limits_{i=1}^n y_i}{2n} + \dfrac{2 \sum \limits_{i=1}^n \hat{\beta}_0}{2n} + \dfrac{2 \sum \limits_{i=1}^n \hat{\beta}_1x_i}{2n} = \dfrac{0}{2n}$, \vspace{0.5cm}
+
+$-\bar{y} + \hat{\beta}_0 + \hat{\beta}_0\bar{x} = 0$,
+\end{center}\vspace{0.5cm}
+
+em que $\bar{y}$ e $\bar{x}$ são as médias amostrais de $y$ e $x$, respectivamente.
+
+Portanto,
+
+\begin{equation}
+\hat{\beta}_0 = \bar{y} - \hat{\beta}_1 \bar{x} \text{.} (\#eq:beta0)
+\end{equation}
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+* Derivada parcial em relação a $\hat{\beta}_1$: \vspace{0.5cm}
+
+\begin{center}
+$\dfrac{\partial S}{\partial \beta_1} = \dfrac{\partial}{\partial \beta_1} \sum \limits_{i=1}^n (y_i - \hat{\beta}_0 - \hat{\beta}_1x_i)^2$, \vspace{0.5cm}
+
+$u = y_i - \hat{\beta}_0 - \hat{\beta}_1x_i$,
+\end{center}
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+* Derivada parcial em relação a $\hat{\beta}_0$: \vspace{0.5cm}
+
+\begin{center}
+$\dfrac{\partial S}{\partial \beta_0} = \dfrac{\partial}{\partial \beta_0} \sum \limits_{i=1}^n (u)^2$, \vspace{0.5cm}
+
+$\dfrac{\partial S}{\partial \beta_0} = \sum \limits_{i=1}^n 2uu'$, \vspace{0.5cm}
+
+$u' = -x_i$,
+\end{center}
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+* Derivada parcial em relação a $\hat{\beta}_0$: \vspace{0.5cm}
+
+\begin{center}
+$\dfrac{\partial S}{\partial \beta_1} = \sum \limits_{i=1}^n 2(y_i - \hat{\beta}_0 - \hat{\beta}_1x_i)(-x_i)$,
+\end{center} \vspace{0.5cm}
+
+\begin{equation}
+\dfrac{\partial S}{\partial \beta_1} = -2\sum \limits_{i=1}^n x_i(y_i - \hat{\beta}_0 - \hat{\beta}_1x_i) \text{.}
+\end{equation}
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+* Iguala a zero: \vspace{0.5cm}
+
+\begin{center}
+$\dfrac{\partial S}{\partial \beta_1} = 0$, \vspace{0.5cm}
+
+$-2 \sum \limits_{i=1}^n x_i(y_i - \hat{\beta}_0 - \hat{\beta}_1x_i) = 0$, \vspace{0.5cm}
+\end{center},
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+Resolve o sistema substituindo $\hat{\beta}_0$ pela equação \@ref(eq:beta0): \vspace{0.5cm}
+
+\begin{center}
+$-2 \sum \limits_{i=1}^n x_i(y_i - (\bar{y} - \hat{\beta}_1\bar{x}) - \hat{\beta}_1x_i) = 0$, \vspace{0.5cm}
+
+$-2 \sum \limits_{i=1}^n x_i(y_i - \bar{y} + \hat{\beta}_1\bar{x} - \hat{\beta}_1x_i) = 0$, \vspace{0.5cm}
+
+$-2 \sum \limits_{i=1}^n x_i(y_i - \bar{y} + \hat{\beta}_1(\bar{x} - x_i)) = 0$, \vspace{0.5cm}
+
+$-2 \sum \limits_{i=1}^n x_i(y_i - \bar{y}) + \hat{\beta}_1x_i(\bar{x} - x_i) = 0$,
+\end{center}
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+Resolve o sistema substituindo $\hat{\beta}_0$ pela equação \@ref(eq:beta0): \vspace{0.5cm}
+
+\begin{center}
+$\sum \limits_{i=1}^n x_i(y_i - \bar{y}) + \hat{\beta}_1x_i(\bar{x} - x_i) = 0$, \vspace{0.5cm}
+
+$\sum \limits_{i=1}^n x_i(y_i - \bar{y}) + \hat{\beta}_1 \sum \limits_{i=1}^n x_i(\bar{x} - x_i) = 0$, \vspace{0.5cm}
+
+$\hat{\beta}_1 \sum \limits_{i=1}^n x_i(\bar{x} - x_i) = - \sum \limits_{i=1}^n x_i(y_i - \bar{y})$,
+\end{center}
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+Resolve o sistema substituindo $\hat{\beta}_0$ pela equação \@ref(eq:beta0): \vspace{0.5cm}
+
+\begin{center}
+$\hat{\beta}_1 = \dfrac{-\sum \limits_{i=1}^n x_i(y_i - \bar{y})}{ \sum \limits_{i=1}^n x_i(\bar{x} - x_i) }$, \vspace{0.5cm}
+
+$\hat{\beta}_1 = \dfrac{-\sum \limits_{i=1}^n x_iy_i - x_i\bar{y}}{ \sum \limits_{i=1}^n x_i\bar{x} - x_i^2 }$,
+\end{center}
+
+
+
+## Métodos dos Mínimos Quadrados Ordinários
+
+Resolve o sistema substituindo $\hat{\beta}_0$ pela equação \@ref(eq:beta0): \vspace{0.5cm}
+
+\begin{center}
+$\hat{\beta}_1 = \dfrac{- x_iy_i + \sum \limits_{i=1}^n x_i\bar{y}}{ \sum \limits_{i=1}^n x_i\bar{x} - \sum \limits_{i=1}^n x_i^2 }$, 
+\end{center} \vspace{0.5cm}
+
+\begin{equation}
+\hat{\beta}_1 = \dfrac{\bar{y}\sum \limits_{i=1}^n x_i -\sum \limits_{i=1}^n x_iy_i}{\bar{x} \sum \limits_{i=1}^n x_i - \sum \limits_{i=1}^n x_i^2} \text{.}
+\end{equation}
+
+
+
+
+## Ajuste do modelo
+
+Exemplos no Excel...
+
+
+
+## Ajuste do modelo
+
+Exemplo no R:
+
+
+\tiny
+```{r, echo=TRUE}
+modelo <- lm(formula = Tempo ~ Distancia, data = df_tempo)
+```
+
+
+
+## Ajuste do modelo
+
+
+\tiny
+```{r, echo=TRUE}
+summary(modelo)
+```
+
+
+
+ 
